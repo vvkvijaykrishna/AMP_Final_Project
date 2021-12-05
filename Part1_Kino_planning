@@ -10,19 +10,21 @@
 
 using namespace std;
 
+float pi=3.14159;
+
 //arm lengths
 float l1 = 2.0;
 float l2 = 2.0;
 float l3 = 2.0;
 
 //start and end points
-xs = -2;
-ys = 0;
-zs = 0;
+float xs = -2;
+float ys = 0;
+float zs = 0;
 
-xe = 2;
-ye = 4;
-ze = 0;
+float xe = 2;
+float ye = 4;
+float ze = 0;
 vector <float> start_point { xs, ys, zs };
 vector <float> end_point { xe, ye, ze };
 
@@ -31,26 +33,34 @@ struct state{
     float theta1;
     float theta2;
     float theta3;
+    float x1;
+    float y1;
+    float z1;
     
+    float x2;
+    float y2;
+    float z2 ;
+    
+    float x3;
+    float y3;
+    float z3;
     float time;
-    
-    //position of the end points (x1,y1,z1)   (x2,y2,z2)  (x3,y3,z3)
-    float x1 = 0;
-    float y1 = l1;
-    float z1 = 0;
-    
-    float x2 = l2*sin(theta2)*cos(theta1);
-    float y2 = l1 - l2*cos(theta2);
-    float z2 = l2*sin(theta2)*sin(theta1);
-    
-    float x3 = ( l2*sin(theta2) - l3*sin(theta2+theta3) )*cos(theta1);
-    float y3 = l1 - l2*cos(theta2) + l3*cos(theta2+theta3);
-    float z3 = ( l2*sin(theta2) - l3*sin(theta2+theta3) )*sin(theta1);
     
     state(float mtheta1, float mtheta2, float mtheta3){
         theta1 = mtheta1;
         theta2 = mtheta2;
         theta3 = mtheta3;
+        x1 = 0;
+        y1 = l1;
+        z1 = 0;
+    
+        x2 = l2*sin(theta2)*cos(theta1);
+        y2 = l1 - l2*cos(theta2);
+        z2 = l2*sin(theta2)*sin(theta1);
+    
+        x3 = ( l2*sin(theta2) - l3*sin(theta2+theta3) )*cos(theta1);
+        y3 = l1 - l2*cos(theta2) + l3*cos(theta2+theta3);
+        z3 = ( l2*sin(theta2) - l3*sin(theta2+theta3) )*sin(theta1);
     }
     
     state(){
@@ -60,10 +70,13 @@ struct state{
         time = 0.0;
     }
     
+        //position of the end points (x1,y1,z1)   (x2,y2,z2)  (x3,y3,z3)
+    
     void display_state(){
         cout << "\nStates-------------- at time: " << time <<"\n";
-        cout << "Angles are: (\t" << theta1 << "\t" <<theta2 << "\t" << theta3 << ")" <<endl;
-        cout << "Point positions are :\n" << "Point 1: ( " << x1 << " , " << y1 << " , " << z1 << " )" << "\tPoint 2: ( " << x2 << " , " << y2 << " , " << z2 << " )\t";
+        cout << "Angles are: (" << theta1 << "\t" <<theta2 << "\t" << theta3 << ")" <<endl;
+        cout << "Point positions are :\n" << "Point 1: ( " << x1 << " , " << y1 << " , " << z1 << " )" <<
+            "\tPoint 2: ( " << x2 << " , " << y2 << " , " << z2 << " )\t";
         cout << "Point 3: ( " << x3 << " , " << y3 << " , " << z3 << " )" << endl;
     }
 };
@@ -73,6 +86,8 @@ vector <vector <vector <float>>> obstacle_vector{};
 //function definitions
 vector <float> get_thetas (const vector <float> &point);  //-----> inverse kinematics
 float theta_vector(float p1x, float p1y, float p2x, float p2y);  //-----> calculate angle (theta) value
+
+
 int main(){
     obstacle_vector={ {{5,0,5},{5,0,-5},{-5,0,-5},{-5,0,5},{5,-5,5},{5,-5,-5},{-5,-5,-5},{-5,-5,5}} };
     
@@ -80,21 +95,72 @@ int main(){
     state newstate;
     newstate.display_state();
     
-    get_thetas(start_point);
-    get_thetas(end_point);
+    vector <float> temp_thetas{};
+    cout << "\nStart point "<< start_point.at(0) <<"\t"<< start_point.at(1) <<"\t"<< start_point.at(2) <<"\n";
+    temp_thetas = get_thetas(start_point);
+    state initial_state(temp_thetas.at(0), temp_thetas.at(1), temp_thetas.at(2) );
+    cout << "\nEnd point"<< end_point.at(0) <<"\t"<< end_point.at(1) << "\t" << end_point.at(2) <<"\n";
+    temp_thetas = get_thetas(end_point);
+    state final_state(temp_thetas.at(0), temp_thetas.at(1), temp_thetas.at(2) );
+    
+    cout<<"\nThe initial_states are: \n";
+    initial_state.display_state();
+    cout<<"\n---------------------------\n";
+    cout<<"\nThe final states are: \n";
+    final_state.display_state();
     //generate c-space
+    return 0;
 }
+
 
 vector <float> get_thetas (const vector <float> &point) {
     float x3 = point.at(0);
     float y3 = point.at(1);
     float z3 = point.at(2);
     
-    float theta_1 = atan(z/x);
+    float theta_1 = theta_vector(0,0,x3,z3);
     
     //calculate theta_2
+    float x1 = 0;
+    float y1 = l1;
+    float z1 = 0;
     
+    x1 = sqrt(x1*x1 + z1*z1);
+    //y1 = y1;
+    float x2 = sqrt(x3*x3 + z3*z3);
+    float y2 = y3;
     
+    float a = ( (l1*l1-l2*l2) - (x1*x1 - x2*x2) - (y1*y1 - y2*y2) ) / (2*y2-2*y1);
+    float b = (2*x2 - 2*x1) / (2*y2 - 2*y1);
+    float as = ( 1 + b*b ); cout<<"as\t"<<as<<endl;
+    float bs = ( -2*x1 - 2*b*(a-y1) );  cout<<"bs\t"<<bs<<endl;
+    float cs = ( x1*x1 + (a-y1)*(a-y1) - l1*l1 );  cout<<"cs\t"<<cs<<endl;
+    
+    float x = (-bs - sqrt( bs*bs - 4*as*cs ) ) / (2*as);
+    float y = a - b*x;
+    cout << "\nIntersection points: " << x << "\t" << y << endl;
+    
+    float theta_2 = theta_vector(x1,y1,x,y); cout<<"\nTheta 2 is"<<theta_2<<endl;
+    if( theta_2 <= (pi/2+0.001) )
+        theta_2 += (pi/2);
+    if( theta_2 >= (3*pi/2-0.001) )
+        theta_2 -= 3*pi/2;
+//    if ( (0 < theta_2) && (theta_2 < (3*pi/2)) ){
+//        theta_2 += pi/2;
+//    }
+//    //if ( 4.7123 <= theta_2 < 6.28319){
+//    else{
+//        theta_2 -= (3*pi/2);
+//    }
+    
+    //calculate theta_3
+    float theta_3 = theta_vector(x,y,x2,y2) - theta_vector(x1,y1,x,y) + pi;
+    if (theta_3 < 0)
+        theta_3 += 2*pi;
+    
+    vector <float> thetas = {theta_1, theta_2, theta_3};
+    cout<<"\nThetas: "<<theta_1<<"\t"<<theta_2<<"\t"<<theta_3<<endl;
+    return thetas;
 }
 
 float theta_vector(float p1x, float p1y, float p2x, float p2y){
