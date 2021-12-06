@@ -13,17 +13,17 @@ using namespace std;
 float pi=3.14159;
 
 //arm lengths
-float l1 = 2.0;
+float l1 = 3.0;
 float l2 = 2.0;
 float l3 = 2.0;
 
 //start and end points
 float xs = -2;
-float ys = 0;
+float ys = 1;
 float zs = 0;
 
 float xe = 2;
-float ye = 4;
+float ye = 5;
 float ze = 0;
 vector <float> start_point { xs, ys, zs };
 vector <float> end_point { xe, ye, ze };
@@ -86,7 +86,8 @@ vector <vector <vector <float>>> obstacle_vector{};
 //function definitions
 vector <float> get_thetas (const vector <float> &point);  //-----> inverse kinematics
 float theta_vector(float p1x, float p1y, float p2x, float p2y);  //-----> calculate angle (theta) value
-
+void generate_c_cpace();  //----------------------------------------> generates c space for the manipulator
+vector <float> get_plane_parameters(int p, int q, int r, int i);
 
 int main(){
     obstacle_vector={ {{5,0,5},{5,0,-5},{-5,0,-5},{-5,0,5},{5,-5,5},{5,-5,-5},{-5,-5,-5},{-5,-5,5}} };
@@ -108,10 +109,73 @@ int main(){
     cout<<"\n---------------------------\n";
     cout<<"\nThe final states are: \n";
     final_state.display_state();
+    
     //generate c-space
+    generate_c_cpace();
+    
     return 0;
 }
 
+void generate_c_cpace(){
+    vector <vector <vector <float>>> plane_parameters {};
+    cout<<"\n\nGenerating C-space:\n\n";
+    
+    //get plane equations for all the obstalces (cubes, cuboids)
+    for(int i=0 ; i<obstacle_vector.size() ; i++){
+        vector <vector <float>> temp_vec{};
+        temp_vec.push_back( get_plane_parameters(1,2,3,i) );
+        temp_vec.push_back( get_plane_parameters(5,6,7,i) );
+        temp_vec.push_back( get_plane_parameters(5,6,2,i) );
+        temp_vec.push_back( get_plane_parameters(8,7,3,i) );
+        temp_vec.push_back( get_plane_parameters(5,1,4,i) );
+        temp_vec.push_back( get_plane_parameters(6,2,3,i) );
+        plane_parameters.push_back(temp_vec);
+    }
+    
+    cout<<"\n\nThe plane parameters are:\n";
+    for(int i=0 ; i<plane_parameters.size() ; i++){
+        for(int j=0 ; j<plane_parameters.at(i).size() ; j++){
+            for(int k=0 ; k<plane_parameters.at(i).at(j).size() ; k++)
+                cout<<plane_parameters.at(i).at(j).at(k)<<" ";
+            cout<<endl;
+        }
+        cout<<endl;
+    }
+    cout<<endl<<endl;
+    
+    for(int i=0 ; i<360 ; i++){
+        for(int j=0 ; j<360 ; j++){
+            for(int k=0 ; k<360 ; k++){
+                //check collision for all angles tomorrow
+                //must take 2 hrs, but do it fast
+            }
+        }
+    }
+    
+}
+
+vector <float> get_plane_parameters(int p, int q, int r, int i){
+    
+    float x1 = obstacle_vector.at(i).at(p-1).at(0);
+    float y1 = obstacle_vector.at(i).at(p-1).at(1);
+    float z1 = obstacle_vector.at(i).at(p-1).at(2);
+   
+    float x2 = obstacle_vector.at(i).at(q-1).at(0);
+    float y2 = obstacle_vector.at(i).at(q-1).at(1);
+    float z2 = obstacle_vector.at(i).at(q-1).at(2);
+
+    float x3 = obstacle_vector.at(i).at(r-1).at(0);
+    float y3 = obstacle_vector.at(i).at(r-1).at(1);
+    float z3 = obstacle_vector.at(i).at(r-1).at(2);
+ 
+    float a = ( (y2-y1)*(z3-z1) - (y3-y1)*(z2-z1) );
+    float b = ( -1*(x2-x1)*(z3-z1) + (x3-x1)*(z2-z1) );
+    float c = ( (x2-x1)*(y3-y1) - (x3-x1)*(y2-y1) );
+    float d = ( -a*x1 - b*y1 - c*z1 );
+    
+    vector <float> plane_parms {a,b,c,d};
+    return (plane_parms);
+}
 
 vector <float> get_thetas (const vector <float> &point) {
     float x3 = point.at(0);
@@ -130,21 +194,21 @@ vector <float> get_thetas (const vector <float> &point) {
     float x2 = sqrt(x3*x3 + z3*z3);
     float y2 = y3;
     
-    float a = ( (l1*l1-l2*l2) - (x1*x1 - x2*x2) - (y1*y1 - y2*y2) ) / (2*y2-2*y1);
+    float a = ( (l2*l2-l3*l3) - (x1*x1 - x2*x2) - (y1*y1 - y2*y2) ) / (2*y2-2*y1);
     float b = (2*x2 - 2*x1) / (2*y2 - 2*y1);
     float as = ( 1 + b*b ); cout<<"as\t"<<as<<endl;
     float bs = ( -2*x1 - 2*b*(a-y1) );  cout<<"bs\t"<<bs<<endl;
-    float cs = ( x1*x1 + (a-y1)*(a-y1) - l1*l1 );  cout<<"cs\t"<<cs<<endl;
+    float cs = ( x1*x1 + (a-y1)*(a-y1) - l2*l2 );  cout<<"cs\t"<<cs<<endl;
     
     float x = (-bs - sqrt( bs*bs - 4*as*cs ) ) / (2*as);
     float y = a - b*x;
     cout << "\nIntersection points: " << x << "\t" << y << endl;
     
-    float theta_2 = theta_vector(x1,y1,x,y); cout<<"\nTheta 2 is"<<theta_2<<endl;
-    if( theta_2 <= (pi/2+0.001) )
+    float theta_2 = theta_vector(x1,y1,x,y); cout<<"\nTheta 2 is "<<theta_2<<endl;   //--------------------------------------- not proper, but still works
+    if( theta_2 <= (pi/2 + 0.01) )
         theta_2 += (pi/2);
     if( theta_2 >= (3*pi/2-0.001) )
-        theta_2 -= 3*pi/2;
+        theta_2 -= 3*pi/2 - 0.001;
 //    if ( (0 < theta_2) && (theta_2 < (3*pi/2)) ){
 //        theta_2 += pi/2;
 //    }
