@@ -135,8 +135,10 @@ struct state{
                 return 0;
     }
     
-    int check_state (const vector <vector <vector <float>>> &plane_parameters ){
+    int check_state ( const vector <vector <vector <float>>> &plane_parameters ){
         if(link1_link3_intersection()==1){
+           //cout<<"\n\nLink 1 and link 3 intersect here: \n";
+           //display_state();//-------------------------------------------------display_state
            return 1;                  //indicates intersection
        }
        
@@ -215,9 +217,11 @@ vector <vector <vector <int>>> generate_c_cpace();  //--------------------------
 vector <float> get_plane_parameters(int p, int q, int r, int i);
 
 int main(){
-    obstacle_vector={ {{5,0,5},{5,0,-5},{-5,0,-5},{-5,0,5},{5,-5,5},{5,-5,-5},{-5,-5,-5},{-5,-5,5}} };
+//    obstacle_vector={ {{5,0,5},{5,0,-5},{-5,0,-5},{-5,0,5},{5,-5,5},{5,-5,-5},{-5,-5,-5},{-5,-5,5}} };
+//    obstacle_vector={ {{5,8,5},{5,8,-5},{-5,8,-5},{-5,8,5},{5,5,5},{5,5,-5},{-5,5,-5},{-5,5,5}} };
+    obstacle_vector={ {{5,3,5},{5,3,-5},{-5,3,-5},{-5,3,5},{5,-5,5},{5,-5,-5},{-5,-5,-5},{-5,-5,5}} };
     
-    cout << "Starts now" << endl;
+    //cout << "Starts now" << endl;
     state newstate;
     newstate.display_state();
     
@@ -237,9 +241,10 @@ int main(){
     
     //generate c-space
     vector <vector <vector <int>>> c_space = generate_c_cpace();
+    cout<<"\n\n\n*********   C SPACE GENERATED   *******************\n\n\n";
     
     ofstream myfile;
-    myfile.open ("P1_Cspace.csv");
+    myfile.open ("P1_Cspace2s.csv");
     for(int i=0; i<c_space.size(); i++){
         for(int j=0; j<c_space.at(i).size(); j++){
             for(int k=0; k<c_space.at(i).at(j).size(); k++){
@@ -257,7 +262,8 @@ int main(){
 
 vector <vector <vector <int>>> generate_c_cpace(){
     vector <vector <vector <float>>> plane_parameters {};
-    vector <vector <vector <int>>> c_space_obstacles (360, vector <vector <int>>(360, vector <int> (360) ) );
+//  vector <vector <vector <int>>> c_space_obstacles (180, vector <vector <int>>(180, vector <int> (180) ) );
+    vector <vector <vector <int>>> c_space_obstacles {};
     cout<<"\n\nGenerating C-space:\n\n";
     
     //get plane equations for all the obstalces (cubes, cuboids)
@@ -283,18 +289,29 @@ vector <vector <vector <int>>> generate_c_cpace(){
     }
     cout<<endl<<endl;
     
-    for(int i=0 ; i<360 ; i++){
-        for(int j=0 ; j<360 ; j++){
-            for(int k=0 ; k<360 ; k++){
+    for(int i=0 ; i<360 ; i+=2){   //-------> for theta1
+        vector <vector <int>> temp2_vector{};
+        for(int j=0 ; j<360 ; j+=2){    //-------> for theta2
+            
+            vector <int> temp_vector{};
+            for(int k=0 ; k<360 ; k+=2){   //-------> for theta3
+                
                 //check collision for all angles tomorrow
                 //must take 2 hrs, but do it fast
-                state check_this_state (i,j,k);
-                if( check_this_state.check_state(obstacle_vector) == 1 )
-                    c_space_obstacles.at(i).at(j).at(k) = 1;
+                state check_this_state ((i*pi/180),(j*pi/180),(k*pi/180));
+                if( check_this_state.check_state(obstacle_vector) == 1 ){
+                   temp_vector.push_back(1);
+                   //c_space_obstacles.at(i/2).at(j/2).at(k/2) = 1;   //intersection happens
+                   //check_this_state.display_state();//-------------------------------------------------display_state
+                }
                 else
-                    c_space_obstacles.at(i).at(j).at(k) = 0; 
+                    temp_vector.push_back(0);
+                    //c_space_obstacles.at(i).at(j).at(k) = 0; 
             }
+            temp2_vector.push_back(temp_vector);
         }
+        c_space_obstacles.push_back(temp2_vector);
+        cout<<"Loading..."<<i<<endl;
     }
     
     return c_space_obstacles;
