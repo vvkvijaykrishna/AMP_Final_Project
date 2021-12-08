@@ -12,7 +12,7 @@ using namespace std;
 
 float pi=3.14159;
 float theta_min = 0.0;
-float theta_max = 6.28319;
+float theta_max = 6.283;
 float pgoal = 0.05;
 
 //arm lengths
@@ -157,10 +157,10 @@ struct state{
             float d1 = projection_vector(a,b3); 
             float d2 = projection_vector(a,b2);
             float d = euclid_dist (p1,p2);
-            if( ( 0<d1 && d1<d ) || ( 0<d2 && d2<d ) )
-                return 1;
+            if( ( (0<d1) && (d1<d) ) || ( (0<d2) && (d2<d) ) || ( 0>d1 && (d2>d) ) || ( 0>d2 && (d1>d) ) )
+                return 1;       //intersection
             else 
-                return 0;
+                return 0;       //valid
     }
     
     int isstate_goal (){
@@ -172,14 +172,14 @@ struct state{
              return 0;
     }
     
-    void randomize_state (const float &theta1_goal, const float &theta2_goal, const float &theta2_goal){
+    void randomize_state (const float &theta1_goal, const float &theta2_goal, const float &theta3_goal){
         float prob = rand() % 100 + 0;
         if( (prob/100) <= pgoal )
          {theta1=theta1_goal; theta2=theta2_goal; theta3=theta3_goal;}
         else{
-            theta1 = rand() % ( theta_max*1000 +1 - theta_min*1000 ) + theta_min*1000; theta1/=1000;
-            theta2 = rand() % ( theta_max*1000 +1 - theta_min*1000 ) + theta_min*1000; theta2/=1000;
-            theta3 = rand() % ( theta_max*1000 +1 - theta_min*1000 ) + theta_min*1000; theta3/=1000;
+            theta1 = rand() % static_cast<int>( theta_max*1000 +1 - theta_min*1000 ) + static_cast<int>(theta_min*1000); theta1/=1000;
+            theta2 = rand() % static_cast<int>( theta_max*1000 +1 - theta_min*1000 ) + static_cast<int>(theta_min*1000); theta2/=1000;
+            theta3 = rand() % static_cast<int>( theta_max*1000 +1 - theta_min*1000 ) + static_cast<int>(theta_min*1000); theta3/=1000;
         }
         
         x1 = 0;
@@ -236,8 +236,12 @@ struct state{
                 if( count==3 ) //then link 2 intersects with obstacle
                  break;
                 else
-                    count_ok++;
+                    count_ok++;   //no of obstacles not in collision
                }
+               
+//               if(count_ok!=0){
+//                   break;
+//               }
            }
            if( count_ok == plane_parameters.size() )
                return 0;   // no intersection
@@ -297,12 +301,13 @@ vector <vector <float>> generate_input (const state &near_state);
 state find_new_state(const vector <vector <float>> &urand, const state &near_state, const state &rand_state);
 int ifisstatevalid(const state &s,const vector <vector <vector <int>>> &c_space);
 int check_state_collision(const state &s,const vector <vector <vector <int>>> &c_space);
+state runge_kutta( const state &near_state, const vector <float> &urandom);
 
 
 int main(){
 //    obstacle_vector={ {{5,0,5},{5,0,-5},{-5,0,-5},{-5,0,5},{5,-5,5},{5,-5,-5},{-5,-5,-5},{-5,-5,5}} };
 //    obstacle_vector={ {{5,8,5},{5,8,-5},{-5,8,-5},{-5,8,5},{5,5,5},{5,5,-5},{-5,5,-5},{-5,5,5}} };
-    obstacle_vector={ {{5,3,5},{5,3,-5},{-5,3,-5},{-5,3,5},{5,-5,5},{5,-5,-5},{-5,-5,-5},{-5,-5,5}} };
+    obstacle_vector={ {{5,0.5,5},{5,0.5,-5},{-5,0.5,-5},{-5,0.5,5},{5,-5,5},{5,-5,-5},{-5,-5,-5},{-5,-5,5}} };
     
     //cout << "Starts now" << endl;
     
@@ -330,13 +335,25 @@ int main(){
         for(int j=0; j<c_space.at(i).size(); j++){
             for(int k=0; k<c_space.at(i).at(j).size(); k++){
                 if( c_space.at(i).at(j).at(k)==1 )
-                   myfile<<i<<","<<j<<","<<k;
-                myfile<<endl;
+                   myfile<<i<<","<<j<<","<<k<<endl;
+                //myfile<<endl;
             }
         }
-        myfile<<endl;
+        //myfile<<endl;
     }
     myfile.close();
+    cout<<"\nThe C-Space is exported!!!!!!!!!!!!!!!\n";
+    
+    //------>> for displaying the c space on the command prompt
+//    for(int i=0; i<c_space.size(); i++){ cout<<"\n\nFor angle theta1= "<<i<<endl;
+//        for(int j=0; j<c_space.at(i).size(); j++){
+//            for(int k=0; k<c_space.at(i).at(j).size(); k++){
+//                   cout<<c_space.at(i).at(j).at(k);
+//                //myfile<<endl;
+//            }cout<<endl;
+//        }
+//        //myfile<<endl;
+//    }
     
     srand(time(0));
     
@@ -350,45 +367,58 @@ int main(){
     graph.push_back(initial_state);
     
     while( ( newstate.isstate_goal()==0 ) && ( count<=10000 ) ){
-        rand_state.randomize_state( final_state.theta1 , final_state.theta2 , final_state.theta3);
+        rand_state.randomize_state( final_state.theta1 , final_state.theta2 , final_state.theta3 );
+//        cout<<"\nThis is the random state created: \n";
+//        rand_state.display_state();
+        
         state near_state = getnearstate(rand_state,graph);
+//        cout<<"\nThis is the near state found: \n";
+//        near_state.display_state();
         
         vector < vector <float> > urand = generate_input( near_state );
         newstate = find_new_state(urand,near_state,rand_state);
-        
+//        cout<<"\nThis is the new state found: \n";
+//        newstate.display_state();       
         //state validity function - ifisstatevalid
         //--------------->> can implement path validity as well
-        if( ifisstatevalid(new_state, c_space) == 1){
+        if( ifisstatevalid( newstate, c_space ) == 1){
             state temp_state{};
             temp_state = newstate;
             temp_state.state_number = (point_number+2) ;
             temp_state.previous_state = near_state.state_number;
             temp_state.time = near_state.time + 1; //--------------------->> actuator duration
             graph.push_back(temp_state);
+            cout<<"\nYes, the state is valid\n";
+            point_number++;
         }
         
         else
-         {continue;}
-         
+         {cout<<"\nThe state is invalid\n";continue;}
          count++;
+         cout<<"\nNo of iterations over: "<<count<<endl;
          
-         if( ( newstate.isstate_goal()==1 ){
+         if( newstate.isstate_goal()==1 ){
              cout<<"\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n**********GOAL REACHED\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n**********";
+             newstate.display_state();
          }
          
          if( least_distance_ever > newstate.euclid_dist_to_state_in_cspace(final_state) ){
              least_distance_ever = newstate.euclid_dist_to_state_in_cspace(final_state);
          }
          
-         if( count%1000 == 0 ){
-             cout<<"\nLeast_distance_ever is: "<<least_distance_ever<<endl;
+         if( count%10 == 0 ){
+             cout<<"\n\n\n\n\n\n\n\nLeast_distance_ever is: "<<least_distance_ever<<endl<<endl<<endl;
          }
     }
     
-    ofstream myfile;
+    cout<<"\n\nDisplaying graph points:\n";
+    for(int i=0; i<graph.size(); ++i ){
+        cout<<graph.at(i).theta1<<","<<graph.at(i).theta2<<","<<graph.at(i).theta3<<" sn: "<<graph.at(i).state_number<<" ps: "<<graph.at(i).previous_state<<endl;
+    }
+    
     myfile.open ("Final_project_a_graph_points.csv");
     for(int i=0; i<graph.size(); i++){
-        myfile<<graph.at(i).x<<","<<graph.at(i).y;
+        myfile<<graph.at(i).theta1<<","<<graph.at(i).theta2<<","<<graph.at(i).theta3;
         myfile<<endl;
     }
     myfile.close();
@@ -450,11 +480,11 @@ vector <vector <float>> generate_input (const state &near_state){  //function to
     float theta_dot_max = 0.209;               // actuator speed is +-0.209 rad/s
     float theta_dot_min = -0.209;
     for(int i=0; i<20; i++){
-        vector <float> u{0,0,0};
+        vector <float> u{0.0,0.0,0.0};
         
-        u.at(0) = rand() % ( theta_dot_max*1000 +1 - theta_dot_min*1000 ) + theta_dot_min*1000; u.at(0)/=1000;
-        u.at(1) = rand() % ( theta_dot_max*1000 +1 - theta_dot_min*1000 ) + theta_dot_min*1000; u.at(1)/=1000;
-        u.at(2) = rand() % ( theta_dot_max*1000 +1 - theta_dot_min*1000 ) + theta_dot_min*1000; u.at(2)/=1000;
+        u.at(0) = rand() % static_cast<int>( theta_dot_max*1000 +1 - theta_dot_min*1000 ) + static_cast<int>(theta_dot_min*1000); u.at(0)/=1000;
+        u.at(1) = rand() % static_cast<int>( theta_dot_max*1000 +1 - theta_dot_min*1000 ) + static_cast<int>(theta_dot_min*1000); u.at(1)/=1000;
+        u.at(2) = rand() % static_cast<int>( theta_dot_max*1000 +1 - theta_dot_min*1000 ) + static_cast<int>(theta_dot_min*1000); u.at(2)/=1000;
         urand.push_back(u);
     }
     return urand;
@@ -476,16 +506,17 @@ state find_new_state(const vector <vector <float>> &urand, const state &near_sta
 }
 
 state runge_kutta( const state &near_state, const vector <float> &urandom){
-    float time = 1.0;    //----------------------------> time for each actuation
+    float time = 1.0;    //-----------------------------------------------------------------------------> time for each actuation (can reduce this)
     
     state this_state ( (near_state.theta1 + time * urandom.at(0)), (near_state.theta2 + time * urandom.at(1)), (near_state.theta3 + time * urandom.at(2)) );
     return this_state;
 }
 
 int ifisstatevalid(const state &s, const vector <vector <vector <int>>> &c_space){  // (0-state invalid)  (1-state valid)
-    if ( (s.theta1>=0) && (s.theta1>=(2*pi)) &&
-        (s.theta2>=0) && (s.theta2>=(2*pi)) &&
-        (s.theta3>=0) && (s.theta3>=(2*pi)) ){ //--------------->> can implement path validity as well
+    if ( (s.theta1>=0) && (s.theta1<=(2*pi)) &&
+        (s.theta2>=0) && (s.theta2<=(2*pi)) &&
+        (s.theta3>=0) && (s.theta3<=(2*pi)) ){ //--------------->> can implement path validity as well
+          cout<<"\nThe thetas are in the range!!"<<s.theta1<<" "<<s.theta2<<" "<<s.theta3<<"\n";
           if(check_state_collision(s, c_space) == 0)
             return 0;
           else
@@ -494,20 +525,39 @@ int ifisstatevalid(const state &s, const vector <vector <vector <int>>> &c_space
     else
         return 0;
 }
-
+  //static_cast
 int check_state_collision(const state &s,const vector <vector <vector <int>>> &c_space){  //----------------------->> has a safety of 2 points from the c space
-    float theta1 = s.theta1 *= (180/pi);
-    float theta2 = s.theta2 *= (180/pi);
-    float theta3 = s.theta3 *= (180/pi);
+
+    cout<<"\nIn check_state_collision function...\n";
     
-    vector <float> thetas1 { ((theta1 - (theta1%2))/2) , ((theta1 - (theta1%2) - 2)/2) , ((theta1 - (theta1%2) + 2)/2) , ((theta1 - (theta1%2) + 4)/2) };
-    vector <float> thetas2 { ((theta2 - (theta2%2))/2) , ((theta2 - (theta2%2) - 2)/2) , ((theta2 - (theta2%2) + 2)/2) , ((theta2 - (theta2%2) + 4)/2) };
-    vector <float> thetas3 { ((theta3 - (theta3%2))/2) , ((theta3 - (theta3%2) - 2)/2) , ((theta3 - (theta3%2) + 2)/2) , ((theta3 - (theta3%2) + 4)/2) };
+    float theta1 = s.theta1 * (180/pi);
+    float theta2 = s.theta2 * (180/pi);
+    float theta3 = s.theta3 * (180/pi);
+    
+    int a = static_cast<int>( ( theta1 - ( fmod(theta1,2) ) ) / 2);
+    cout<<"\nAngle number a : "<<a<<endl;
+    int b = static_cast<int>( ( theta2 - ( fmod(theta2,2) ) ) / 2);
+    cout<<"\nAngle number b : "<<b<<endl;
+    int c = static_cast<int>( ( theta3 - ( fmod(theta3,2) ) ) / 2);
+    cout<<"\nAngle number c : "<<c<<endl;
+    
+    vector <int> thetas1 { (a) , (a-1) , (a+1) , (a+2) };
+    vector <int> thetas2 { (b) , (b-1) , (b+1) , (b+2) };
+    vector <int> thetas3 { (c) , (c-1) , (c+1) , (c+2) };
+    
+    if(a<0)
+        thetas1.at(1) = a;
+        
+    if(b<0)
+        thetas1.at(1) = b;
+        
+    if(c<0)
+        thetas1.at(1) = c;
     
     int count{};
     for( int i=0; i<thetas1.size(); i++ ){
         for( int j=0; j<thetas2.size(); j++ ){
-            for( int k=0; k<thetas2.size(); k++ ){
+            for( int k=0; k<thetas3.size(); k++ ){
                 if( c_space.at( thetas1.at(i) ).at( thetas2.at(j) ).at( thetas3.at(k) ) == 1 )
                     count++;
                 if(count!=0)
@@ -521,9 +571,11 @@ int check_state_collision(const state &s,const vector <vector <vector <int>>> &c
     }
     
     if( count != 0 )//state not valid
-        return 0;
-    else
+        {cout<<"\nThe state is not valid!"<<endl;return 0;}
+    else{
+        cout<<"\nYes, state is valid!!!\n";
         return 1;
+    }
     
     
 }
@@ -579,7 +631,7 @@ vector <vector <vector <int>>> generate_c_cpace(){
             temp2_vector.push_back(temp_vector);
         }
         c_space_obstacles.push_back(temp2_vector);
-        cout<<"Loading..."<<i<<endl;
+        cout<<"Constucting c space for angle:"<<i<<"..."<<endl;
     }
     
     return c_space_obstacles;
