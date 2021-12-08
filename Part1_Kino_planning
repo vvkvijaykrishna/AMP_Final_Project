@@ -11,6 +11,9 @@
 using namespace std;
 
 float pi=3.14159;
+float theta_min = 0.0;
+float theta_max = 6.28319;
+float pgoal = 0.05;
 
 //arm lengths
 float l1 = 3.0;
@@ -46,10 +49,14 @@ struct state{
     float z3;
     float time;
     
+    int state_number;
+    int previous_state;
+    
     state(float mtheta1, float mtheta2, float mtheta3){
         theta1 = mtheta1;
         theta2 = mtheta2;
         theta3 = mtheta3;
+        
         x1 = 0;
         y1 = l1;
         z1 = 0;
@@ -61,13 +68,34 @@ struct state{
         x3 = ( l2*sin(theta2) - l3*sin(theta2+theta3) )*cos(theta1);
         y3 = l1 - l2*cos(theta2) + l3*cos(theta2+theta3);
         z3 = ( l2*sin(theta2) - l3*sin(theta2+theta3) )*sin(theta1);
+        
+        state_number = INT_MAX;
+        previous_state = INT_MAX;
+        
+        time = 0;
     }
     
     state(){
         theta1 = 0.0;
         theta2 = 0.0;
         theta3 = 0.0;
-        time = 0.0;
+        
+        x1 = 0;
+        y1 = l1;
+        z1 = 0;
+    
+        x2 = l2*sin(theta2)*cos(theta1);
+        y2 = l1 - l2*cos(theta2);
+        z2 = l2*sin(theta2)*sin(theta1);
+    
+        x3 = ( l2*sin(theta2) - l3*sin(theta2+theta3) )*cos(theta1);
+        y3 = l1 - l2*cos(theta2) + l3*cos(theta2+theta3);
+        z3 = ( l2*sin(theta2) - l3*sin(theta2+theta3) )*sin(theta1);
+        
+        state_number = INT_MAX;
+        previous_state = INT_MAX;
+        
+        time = 0;
     }
     
         //position of the end points (x1,y1,z1)   (x2,y2,z2)  (x3,y3,z3)
@@ -79,22 +107,204 @@ struct state{
             "\tPoint 2: ( " << x2 << " , " << y2 << " , " << z2 << " )\t";
         cout << "Point 3: ( " << x3 << " , " << y3 << " , " << z3 << " )" << endl;
     }
+    
+//    int check_state( vector <vector <vector <float>>> plane_parameters ){
+//       if(link1_link3_intersection()==1){
+//           return 0;                  //indicates intersection
+//       }
+//       else{
+//          for( int i=0; i<plane_parameters.size; i++){
+//              for( int j=0; j<plane_parameters.at(i).size; j++){
+//                  float s1 = plane_parameters.at(i).at(j).(0)*x2 + plane_parameters.at(i).at(j).(1)*y2 + plane_parameters.at(i).at(j).(2)*z2 + plane_parameters.at(i).at(j).(3);
+//                  float s2 = plane_parameters.at(i).at(j).(0)*x3 + plane_parameters.at(i).at(j).(1)*y3 + plane_parameters.at(i).at(j).(2)*z3 + plane_parameters.at(i).at(j).(3);
+//                  if ( (s1*s2) < 0 )
+//                  //check for intersection of line on plane
+//                  {
+//                  }
+//                  else
+//                      return 0;
+//              }
+//          } 
+//       }
+//    }
+
+    float projection_vector(const vector <float> &a, const vector <float> &b){
+        float x{};
+        for(int i=0; i< a.size(); i++){
+            x += (a.at(i)) * (b.at(i)) ;
+        }
+        
+        float y{};
+        for(int i=0; i< a.size(); i++){
+            y += a.at(i)*a.at(i);
+        }
+        y = sqrt(y);
+        
+        x /= y;
+        return x;
+    }
+    
+    float euclid_dist(const vector <float> &a, const vector <float> &b){
+        float x{};
+        for(int i=0; i< a.size(); i++){
+            x += (a.at(i) - b.at(i)) * (a.at(i) - b.at(i)) ;
+        }
+        x = sqrt(x);
+        return x;
+    }
+    
+    int intersection_cond_1d( const vector <float> &a, const vector <float> &b2, const vector <float> &b3, const vector <float> &p1, const vector <float> &p2){
+            float d1 = projection_vector(a,b3); 
+            float d2 = projection_vector(a,b2);
+            float d = euclid_dist (p1,p2);
+            if( ( 0<d1 && d1<d ) || ( 0<d2 && d2<d ) )
+                return 1;
+            else 
+                return 0;
+    }
+    
+    int isstate_goal (){
+         if( ( x3>=(xe-1) ) && ( x3<=(xe+1) ) && 
+             ( y3>=(ye-1) ) && ( y3<=(ye+1) ) && 
+             ( z3>=(ze-1) ) && ( z3<=(ze+1) ) )
+                 return 1;
+         else
+             return 0;
+    }
+    
+    void randomize_state (const float &theta1_goal, const float &theta2_goal, const float &theta2_goal){
+        float prob = rand() % 100 + 0;
+        if( (prob/100) <= pgoal )
+         {theta1=theta1_goal; theta2=theta2_goal; theta3=theta3_goal;}
+        else{
+            theta1 = rand() % ( theta_max*1000 +1 - theta_min*1000 ) + theta_min*1000; theta1/=1000;
+            theta2 = rand() % ( theta_max*1000 +1 - theta_min*1000 ) + theta_min*1000; theta2/=1000;
+            theta3 = rand() % ( theta_max*1000 +1 - theta_min*1000 ) + theta_min*1000; theta3/=1000;
+        }
+        
+        x1 = 0;
+        y1 = l1;
+        z1 = 0;
+    
+        x2 = l2*sin(theta2)*cos(theta1);
+        y2 = l1 - l2*cos(theta2);
+        z2 = l2*sin(theta2)*sin(theta1);
+    
+        x3 = ( l2*sin(theta2) - l3*sin(theta2+theta3) )*cos(theta1);
+        y3 = l1 - l2*cos(theta2) + l3*cos(theta2+theta3);
+        z3 = ( l2*sin(theta2) - l3*sin(theta2+theta3) )*sin(theta1);
+        
+    }
+    
+    int check_state ( const vector <vector <vector <float>>> &plane_parameters ){
+        if(link1_link3_intersection()==1){
+           //cout<<"\n\nLink 1 and link 3 intersect here: \n";
+           //display_state();//-------------------------------------------------display_state
+           return 1;                  //indicates intersection
+       }
+       
+       else{
+           //check for each obstalce
+           int count_ok{};
+           for( int i=0; i<plane_parameters.size() ; i++ ){
+               int count = 0;
+               vector <float> a1 { (plane_parameters.at(i).at(5).at(0) - plane_parameters.at(i).at(6).at(0)) , (plane_parameters.at(i).at(5).at(1) - plane_parameters.at(i).at(6).at(1)) , (plane_parameters.at(i).at(5).at(2) - plane_parameters.at(i).at(6).at(2)) }; 
+               vector <float> a2 { (plane_parameters.at(i).at(7).at(0) - plane_parameters.at(i).at(6).at(0)) , (plane_parameters.at(i).at(7).at(1) - plane_parameters.at(i).at(6).at(1)) , (plane_parameters.at(i).at(7).at(2) - plane_parameters.at(i).at(6).at(2)) };
+               vector <float> a3 { (plane_parameters.at(i).at(2).at(0) - plane_parameters.at(i).at(6).at(0)) , (plane_parameters.at(i).at(2).at(1) - plane_parameters.at(i).at(6).at(1)) , (plane_parameters.at(i).at(2).at(2) - plane_parameters.at(i).at(6).at(2)) };
+               vector <float> b3 { x3 - plane_parameters.at(i).at(6).at(0), y3 - plane_parameters.at(i).at(6).at(1) , z3 - plane_parameters.at(i).at(6).at(2)};
+               vector <float> b2 { x2 - plane_parameters.at(i).at(6).at(0), y2 - plane_parameters.at(i).at(6).at(1) , z2 - plane_parameters.at(i).at(6).at(2)};
+               vector <float> b1 { x1 - plane_parameters.at(i).at(6).at(0), y1 - plane_parameters.at(i).at(6).at(1) , z1 - plane_parameters.at(i).at(6).at(2)};
+               
+               count += intersection_cond_1d(a1,b2,b3,plane_parameters.at(i).at(5),plane_parameters.at(i).at(6));
+                
+               count += intersection_cond_1d(a2,b2,b3,plane_parameters.at(i).at(7),plane_parameters.at(i).at(6));
+                   
+               count += intersection_cond_1d(a3,b2,b3,plane_parameters.at(i).at(2),plane_parameters.at(i).at(6));
+                   
+               if( count==3 ) //then link 3 intersects with obstacle
+               break;
+               
+               else{
+                count=0;
+                
+                count += intersection_cond_1d(a1,b1,b2,plane_parameters.at(i).at(5),plane_parameters.at(i).at(6));
+                
+                count += intersection_cond_1d(a2,b1,b2,plane_parameters.at(i).at(7),plane_parameters.at(i).at(6));
+                   
+                count += intersection_cond_1d(a3,b1,b2,plane_parameters.at(i).at(2),plane_parameters.at(i).at(6));
+                
+                if( count==3 ) //then link 2 intersects with obstacle
+                 break;
+                else
+                    count_ok++;
+               }
+           }
+           if( count_ok == plane_parameters.size() )
+               return 0;   // no intersection
+           else
+               return 1;  //indicates intersection
+       }
+    }
+    
+    int link1_link3_intersection(){
+     float alpha1{10000000000.0}, alpha2{10000000000.0};
+        if(x3 != x2){  //else alpha1 can take any value-------------------------------------------------------------------------------------------------------------------
+            alpha1 = (-x2) / (x3-x2);
+        }
+        
+        if(z3 != z2){  //else alpha2 can take any value--------------------------------------------------------------------------------------------------------------------
+            alpha2 = (-z2) / (z3-z2);
+        }
+        
+        if( (alpha1 == alpha2) && (alpha1 > 0) && (alpha1 < 1) ){
+            if( ( (y2 + alpha1*(y3-y2)) > 0 ) && ( (y2 + alpha1*(y3-y2)) < l1 ) )
+                return 1;                                   //indicates intersection
+            else
+                return 0;
+        }
+        else
+            return 0;
+    }
+    
+     float euclid_dist_to_state_in_cspace(const state &s){
+        return ( sqrt( (theta1-s.theta1)*(theta1-s.theta1) + (theta2-s.theta2)*(theta2-s.theta2) + (theta3-s.theta3)*(theta3-s.theta3) ) );
+    }   
+    
+    ~state() {}
 };
 
+//struct addstate : state {
+//    int state_number;
+//    int previous_state;
+//    addstate(int sn, int ps){
+//        state_number=sn;
+//        previous_state=ps;
+//    }
+//};
+
 vector <vector <vector <float>>> obstacle_vector{};
+vector <state> graph {};
+
 
 //function definitions
 vector <float> get_thetas (const vector <float> &point);  //-----> inverse kinematics
 float theta_vector(float p1x, float p1y, float p2x, float p2y);  //-----> calculate angle (theta) value
-void generate_c_cpace();  //----------------------------------------> generates c space for the manipulator
+vector <vector <vector <int>>> generate_c_cpace();  //----------------------------------------> generates c space for the manipulator
 vector <float> get_plane_parameters(int p, int q, int r, int i);
+float dist_states(const state &a, const state&s);
+state getnearstate(const state &s, const vector <state> &graph);
+vector <vector <float>> generate_input (const state &near_state);
+state find_new_state(const vector <vector <float>> &urand, const state &near_state, const state &rand_state);
+int ifisstatevalid(const state &s,const vector <vector <vector <int>>> &c_space);
+int check_state_collision(const state &s,const vector <vector <vector <int>>> &c_space);
+
 
 int main(){
-    obstacle_vector={ {{5,0,5},{5,0,-5},{-5,0,-5},{-5,0,5},{5,-5,5},{5,-5,-5},{-5,-5,-5},{-5,-5,5}} };
+//    obstacle_vector={ {{5,0,5},{5,0,-5},{-5,0,-5},{-5,0,5},{5,-5,5},{5,-5,-5},{-5,-5,-5},{-5,-5,5}} };
+//    obstacle_vector={ {{5,8,5},{5,8,-5},{-5,8,-5},{-5,8,5},{5,5,5},{5,5,-5},{-5,5,-5},{-5,5,5}} };
+    obstacle_vector={ {{5,3,5},{5,3,-5},{-5,3,-5},{-5,3,5},{5,-5,5},{5,-5,-5},{-5,-5,-5},{-5,-5,5}} };
     
-    cout << "Starts now" << endl;
-    state newstate;
-    newstate.display_state();
+    //cout << "Starts now" << endl;
     
     vector <float> temp_thetas{};
     cout << "\nStart point "<< start_point.at(0) <<"\t"<< start_point.at(1) <<"\t"<< start_point.at(2) <<"\n";
@@ -111,13 +321,217 @@ int main(){
     final_state.display_state();
     
     //generate c-space
-    generate_c_cpace();
+    vector <vector <vector <int>>> c_space = generate_c_cpace();
+    cout<<"\n\n\n*********   C SPACE GENERATED   *******************\n\n\n";
+    
+    ofstream myfile;
+    myfile.open ("P1_Cspace2s.csv");
+    for(int i=0; i<c_space.size(); i++){
+        for(int j=0; j<c_space.at(i).size(); j++){
+            for(int k=0; k<c_space.at(i).at(j).size(); k++){
+                if( c_space.at(i).at(j).at(k)==1 )
+                   myfile<<i<<","<<j<<","<<k;
+                myfile<<endl;
+            }
+        }
+        myfile<<endl;
+    }
+    myfile.close();
+    
+    srand(time(0));
+    
+    state newstate;
+    state rand_state;
+    int count=0, point_number=0;
+    float least_distance_ever = INT_MAX;
+    
+    initial_state.state_number=1;
+    initial_state.previous_state=0;
+    graph.push_back(initial_state);
+    
+    while( ( newstate.isstate_goal()==0 ) && ( count<=10000 ) ){
+        rand_state.randomize_state( final_state.theta1 , final_state.theta2 , final_state.theta3);
+        state near_state = getnearstate(rand_state,graph);
+        
+        vector < vector <float> > urand = generate_input( near_state );
+        newstate = find_new_state(urand,near_state,rand_state);
+        
+        //state validity function - ifisstatevalid
+        //--------------->> can implement path validity as well
+        if( ifisstatevalid(new_state, c_space) == 1){
+            state temp_state{};
+            temp_state = newstate;
+            temp_state.state_number = (point_number+2) ;
+            temp_state.previous_state = near_state.state_number;
+            temp_state.time = near_state.time + 1; //--------------------->> actuator duration
+            graph.push_back(temp_state);
+        }
+        
+        else
+         {continue;}
+         
+         count++;
+         
+         if( ( newstate.isstate_goal()==1 ){
+             cout<<"\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n**********GOAL REACHED\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n**********";
+         }
+         
+         if( least_distance_ever > newstate.euclid_dist_to_state_in_cspace(final_state) ){
+             least_distance_ever = newstate.euclid_dist_to_state_in_cspace(final_state);
+         }
+         
+         if( count%1000 == 0 ){
+             cout<<"\nLeast_distance_ever is: "<<least_distance_ever<<endl;
+         }
+    }
+    
+    ofstream myfile;
+    myfile.open ("Final_project_a_graph_points.csv");
+    for(int i=0; i<graph.size(); i++){
+        myfile<<graph.at(i).x<<","<<graph.at(i).y;
+        myfile<<endl;
+    }
+    myfile.close();
+    
+    vector <state> state_record{};
+    int current_point=graph.at(graph.size()-1).previous_state;
+    state_record.push_back(graph.at(graph.size()-1));
+    
+    while(current_point!=0){
+       for(int i=0; i<graph.size(); i++){
+           if(current_point==graph.at(i).state_number){
+             state_record.push_back( graph.at(i) );
+             current_point=graph.at(i).previous_state;
+             break;
+           }
+       } 
+    }
+    
+    cout<<"\n\nDisplaying reverse path:\n";
+    for(int i=0; i<state_record.size(); ++i ){
+        cout<<state_record.at(i).theta1<<","<<state_record.at(i).theta2<<","<<state_record.at(i).theta3<<endl;
+    }
+    
+    myfile.open ("Final_project_a_show_path.csv");
+    for(int i=0; i<state_record.size(); i++){
+        myfile<<state_record.at(i).theta1<<","<<state_record.at(i).theta2<<","<<state_record.at(i).theta3<<endl;
+        myfile<<endl;
+    }
+    myfile.close();
     
     return 0;
 }
 
-void generate_c_cpace(){
+float dist_states(const state &a, const state&s){
+    float dist{};
+    dist += ( (a.theta1 - s.theta1)*(a.theta1 - s.theta1) + 
+                (a.theta2 - s.theta2)*(a.theta2 - s.theta2) + 
+                (a.theta3 - s.theta3)*(a.theta3 - s.theta3) );
+    dist = sqrt(dist);
+    return ( dist );
+}
+
+state getnearstate(const state &s, const vector <state> &graph){
+    float least_distance=INT_MAX;
+    state nearest_state(0,0,0);
+    for(int i=0; i<graph.size(); ++i){
+       float dist = dist_states( graph.at(i) ,s );
+    
+     if( least_distance>dist ){
+        least_distance=dist;
+        nearest_state=graph.at(i);
+     }    
+    }
+    return nearest_state;
+}
+
+vector <vector <float>> generate_input (const state &near_state){  //function to get random input speeds
+    vector < vector <float> > urand{};
+    float theta_dot_max = 0.209;               // actuator speed is +-0.209 rad/s
+    float theta_dot_min = -0.209;
+    for(int i=0; i<20; i++){
+        vector <float> u{0,0,0};
+        
+        u.at(0) = rand() % ( theta_dot_max*1000 +1 - theta_dot_min*1000 ) + theta_dot_min*1000; u.at(0)/=1000;
+        u.at(1) = rand() % ( theta_dot_max*1000 +1 - theta_dot_min*1000 ) + theta_dot_min*1000; u.at(1)/=1000;
+        u.at(2) = rand() % ( theta_dot_max*1000 +1 - theta_dot_min*1000 ) + theta_dot_min*1000; u.at(2)/=1000;
+        urand.push_back(u);
+    }
+    return urand;
+}
+
+state find_new_state(const vector <vector <float>> &urand, const state &near_state, const state &rand_state){
+    state new_state;
+    state this_state;
+    
+    float least_distance = INT_MAX;
+    for(int i=0; i<urand.size(); ++i){
+     this_state = runge_kutta( near_state, urand.at(i) );
+     if( least_distance > dist_states(this_state,rand_state) ){
+        new_state = this_state;
+     }
+    }
+    
+    return new_state; 
+}
+
+state runge_kutta( const state &near_state, const vector <float> &urandom){
+    float time = 1.0;    //----------------------------> time for each actuation
+    
+    state this_state ( (near_state.theta1 + time * urandom.at(0)), (near_state.theta2 + time * urandom.at(1)), (near_state.theta3 + time * urandom.at(2)) );
+    return this_state;
+}
+
+int ifisstatevalid(const state &s, const vector <vector <vector <int>>> &c_space){  // (0-state invalid)  (1-state valid)
+    if ( (s.theta1>=0) && (s.theta1>=(2*pi)) &&
+        (s.theta2>=0) && (s.theta2>=(2*pi)) &&
+        (s.theta3>=0) && (s.theta3>=(2*pi)) ){ //--------------->> can implement path validity as well
+          if(check_state_collision(s, c_space) == 0)
+            return 0;
+          else
+            return 1;
+        }
+    else
+        return 0;
+}
+
+int check_state_collision(const state &s,const vector <vector <vector <int>>> &c_space){  //----------------------->> has a safety of 2 points from the c space
+    float theta1 = s.theta1 *= (180/pi);
+    float theta2 = s.theta2 *= (180/pi);
+    float theta3 = s.theta3 *= (180/pi);
+    
+    vector <float> thetas1 { ((theta1 - (theta1%2))/2) , ((theta1 - (theta1%2) - 2)/2) , ((theta1 - (theta1%2) + 2)/2) , ((theta1 - (theta1%2) + 4)/2) };
+    vector <float> thetas2 { ((theta2 - (theta2%2))/2) , ((theta2 - (theta2%2) - 2)/2) , ((theta2 - (theta2%2) + 2)/2) , ((theta2 - (theta2%2) + 4)/2) };
+    vector <float> thetas3 { ((theta3 - (theta3%2))/2) , ((theta3 - (theta3%2) - 2)/2) , ((theta3 - (theta3%2) + 2)/2) , ((theta3 - (theta3%2) + 4)/2) };
+    
+    int count{};
+    for( int i=0; i<thetas1.size(); i++ ){
+        for( int j=0; j<thetas2.size(); j++ ){
+            for( int k=0; k<thetas2.size(); k++ ){
+                if( c_space.at( thetas1.at(i) ).at( thetas2.at(j) ).at( thetas3.at(k) ) == 1 )
+                    count++;
+                if(count!=0)
+                    break;
+            }
+            if(count!=0)
+                break;
+        }
+        if(count!=0)
+            break;
+    }
+    
+    if( count != 0 )//state not valid
+        return 0;
+    else
+        return 1;
+    
+    
+}
+
+vector <vector <vector <int>>> generate_c_cpace(){
     vector <vector <vector <float>>> plane_parameters {};
+//  vector <vector <vector <int>>> c_space_obstacles (180, vector <vector <int>>(180, vector <int> (180) ) );
+    vector <vector <vector <int>>> c_space_obstacles {};
     cout<<"\n\nGenerating C-space:\n\n";
     
     //get plane equations for all the obstalces (cubes, cuboids)
@@ -143,15 +557,32 @@ void generate_c_cpace(){
     }
     cout<<endl<<endl;
     
-    for(int i=0 ; i<360 ; i++){
-        for(int j=0 ; j<360 ; j++){
-            for(int k=0 ; k<360 ; k++){
+    for(int i=0 ; i<360 ; i+=2){   //-------> for theta1
+        vector <vector <int>> temp2_vector{};
+        for(int j=0 ; j<360 ; j+=2){    //-------> for theta2
+            
+            vector <int> temp_vector{};
+            for(int k=0 ; k<360 ; k+=2){   //-------> for theta3
+                
                 //check collision for all angles tomorrow
                 //must take 2 hrs, but do it fast
+                state check_this_state ((i*pi/180),(j*pi/180),(k*pi/180));
+                if( check_this_state.check_state(obstacle_vector) == 1 ){
+                   temp_vector.push_back(1);
+                   //c_space_obstacles.at(i/2).at(j/2).at(k/2) = 1;   //intersection happens
+                   //check_this_state.display_state();//-------------------------------------------------display_state
+                }
+                else
+                    temp_vector.push_back(0);
+                    //c_space_obstacles.at(i).at(j).at(k) = 0; 
             }
+            temp2_vector.push_back(temp_vector);
         }
+        c_space_obstacles.push_back(temp2_vector);
+        cout<<"Loading..."<<i<<endl;
     }
     
+    return c_space_obstacles;
 }
 
 vector <float> get_plane_parameters(int p, int q, int r, int i){
