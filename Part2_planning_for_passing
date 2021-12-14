@@ -30,11 +30,13 @@ float ye = 1;
 float ze = 0;
 
 float xn = 4;   //----------> location of base of manipulator 2 with respect to the origin
-float xn = 0;
+float yn = 0;
 float zn = 0;
 vector <float> start_point { xs, ys, zs };
 vector <float> end_point { xe, ye, ze };
 
+//function definition
+vector <float> get_thetas (const vector <float> &point, const int &manipulator_number);  //-----> inverse kinematics
 
 struct state{
     float theta1;
@@ -216,13 +218,13 @@ struct state{
     }
     
     int isstate_goal (){
-         if( euclid_dist( vector<float>{x1,y1,z1} , vector<float>{x2,y2,z2} ) <=0.5 )
+         if( euclid_dist( vector<float>{x3,y3,z3} , vector<float>{x6,y6,z6} ) <=0.8 )
                  return 1;
          else
              return 0;
     }
     
-    void randomize_state (const float &theta1_goal, const float &theta2_goal, const float &theta3_goal){
+    void randomize_state (){
         float prob = rand() % 100 + 0;
         if( (prob/100) <= pgoal )
          {
@@ -327,7 +329,7 @@ struct state{
      }
      
      if( a == 2 ){
-        if( (link2_link4_intersection() == 1) ){
+        if( (link4_link6_intersection() == 1) ){
            //cout<<"\n\nLink 1 and link 3 intersect here: \n";
            //display_state();//-------------------------------------------------display_state
            return 1;                  //indicates intersection
@@ -424,13 +426,17 @@ struct state{
     
      float euclid_dist_to_state_in_cspace(const state &s){
         return ( sqrt( (theta1-s.theta1)*(theta1-s.theta1) + (theta2-s.theta2)*(theta2-s.theta2) + (theta3-s.theta3)*(theta3-s.theta3) ) );
-    } 
+    }
+
+    float euclid_dist_to_goal_in_cspace(){
+        return ( euclid_dist( vector<float>{x3,y3,z3} , vector<float>{x6,y6,z6} ) );
+    }
 
     int check_line_intersection(){ // (0-state invalid)  (1-state valid)
         vector < vector <float>> p { {0,0},{x1,y1},{x2,y2},{x3,y3} };
         vector < vector <float>> q { {xn,yn},{x4,y4},{x5,y5},{x6,y6} };
         
-        int count{}
+        int count{};
         if( (do_intersect( q.at(2), q.at(3), p.at(2), p.at(3) ) == 1) || 
            (do_intersect( q.at(2), q.at(3), p.at(1), p.at(2) ) == 1) ||
            (do_intersect( q.at(2), q.at(3), p.at(0), p.at(1) ) == 1) ||
@@ -486,7 +492,7 @@ struct state{
     
     bool onSegment( const vector<float> p, const vector<float> q, const vector<float> r)
     {
-    if (q.at(0)<= max(p.at(0) r.at(0)) && q.at(0)>= min(p.at(0) r.at(0)) &&
+    if (q.at(0)<= max(p.at(0), r.at(0)) && q.at(0)>= min(p.at(0), r.at(0)) &&
         q.at(1) <= max(p.at(1), r.at(1) ) && q.at(1) >= min(p.at(1), r.at(1) ))
        return true;
  
@@ -511,7 +517,6 @@ vector <state> graph {};
 
 
 //function definitions
-vector <float> get_thetas (const vector <float> &point, const int &a);  //-----> inverse kinematics
 float theta_vector(float p1x, float p1y, float p2x, float p2y);  //-----> calculate angle (theta) value
 void generate_c_cpace( vector <vector <vector <int>>> &c_space , vector <vector <vector <int>>> &c_space_man2 );  //----------------------------------------> generates c space for the manipulator
 vector <float> get_plane_parameters(int p, int q, int r, int i);
@@ -519,7 +524,7 @@ float dist_states(const state &a, const state&s);
 state getnearstate(const state &s, const vector <state> &graph);
 vector <vector <float>> generate_input (const state &near_state);
 state find_new_state(const vector <vector <float>> &urand, const state &near_state, const state &rand_state);
-int ifisstatevalid(const state &s,const vector <vector <vector <int>>> &c_space, const vector <vector <vector <int>>> &c_space_man2);
+int ifisstatevalid( state &s,const vector <vector <vector <int>>> &c_space, const vector <vector <vector <int>>> &c_space_man2);
 int check_state_collision(const state &s,const vector <vector <vector <int>>> &c_space, const vector <vector <vector <int>>> &c_space_man2);
 state runge_kutta( const state &near_state, const vector <float> &urandom);
 
@@ -605,8 +610,8 @@ int main(){
     initial_state.previous_state=0;
     graph.push_back(initial_state);
     
-    while( ( newstate.isstate_goal()==0 ) && ( count<=10000 ) ){
-        rand_state.randomize_state( final_state.theta1 , final_state.theta2 , final_state.theta3 );
+    while( ( newstate.isstate_goal()==0 ) && ( count <= 30000 ) ){
+        rand_state.randomize_state();
 //        cout<<"\nThis is the random state created: \n";
 //        rand_state.display_state();
         
@@ -642,8 +647,8 @@ int main(){
              newstate.display_state();
          }
          
-         if( least_distance_ever > newstate.euclid_dist_to_state_in_cspace(final_state) ){
-             least_distance_ever = newstate.euclid_dist_to_state_in_cspace(final_state);
+         if( least_distance_ever > newstate.euclid_dist_to_goal_in_cspace() ){
+             least_distance_ever = newstate.euclid_dist_to_goal_in_cspace();
          }
          
          if( count%10 == 0 ){
@@ -677,14 +682,19 @@ int main(){
        } 
     }
     
-    cout<<"\n\nDisplaying reverse path:\n";
+    cout<<"\n\nDisplaying reverse path for manipulator 1:\n";
     for(int i=0; i<state_record.size(); ++i ){
         cout<<state_record.at(i).theta1<<","<<state_record.at(i).theta2<<","<<state_record.at(i).theta3<<endl;
     }
     
-    myfile.open ("Final_project_a_show_path.csv");
+    cout<<"\n\nDisplaying reverse path for manipulator 2:\n";
+    for(int i=0; i<state_record.size(); ++i ){
+        cout<<state_record.at(i).theta4<<","<<state_record.at(i).theta5<<","<<state_record.at(i).theta6<<endl;
+    }
+    
+    myfile.open ("Final_project_b_show_path.csv");
     for(int i=0; i<state_record.size(); i++){
-        myfile<<state_record.at(i).theta1<<","<<state_record.at(i).theta2<<","<<state_record.at(i).theta3<<endl;
+        myfile<<state_record.at(i).theta1<<","<<state_record.at(i).theta2<<","<<state_record.at(i).theta3<<","<<state_record.at(i).theta4<<","<<state_record.at(i).theta5<<","<<state_record.at(i).theta6<<endl;
         myfile<<endl;
     }
     myfile.close();
@@ -759,7 +769,7 @@ state runge_kutta( const state &near_state, const vector <float> &urandom){
     return this_state;
 }
 
-int ifisstatevalid(const state &s, const vector <vector <vector <int>>> &c_space, const vector <vector <vector <int>>> &c_space_man2){  // (0-state invalid)  (1-state valid)
+int ifisstatevalid( state &s, const vector <vector <vector <int>>> &c_space, const vector <vector <vector <int>>> &c_space_man2){  // (0-state invalid)  (1-state valid)
     if ( (s.theta1>=0) && (s.theta1<=(2*pi)) &&
         (s.theta2>=0) && (s.theta2<=(2*pi)) &&
         (s.theta3>=0) && (s.theta3<=(2*pi)) &&
@@ -770,7 +780,7 @@ int ifisstatevalid(const state &s, const vector <vector <vector <int>>> &c_space
           if(check_state_collision(s, c_space, c_space_man2) == 0)
             return 0;
           else{
-              if( (theta1>6.1784) && (theta1<0.1047) && (theta4>3.037) && (theta4<3.2463) ){
+              if( (s.theta1>6.1784) && (s.theta1<0.1047) && (s.theta4>3.037) && (s.theta4<3.2463) ){
                if( s.check_line_intersection() == 0 )            //check line intersection
                 return 0;
                else 
@@ -972,18 +982,22 @@ vector <float> get_plane_parameters(int p, int q, int r, int i){   // function w
     return (plane_parms);
 }
 
-vector <float> get_thetas (const vector <float> &point, const int &a) {
+vector <float> get_thetas (const vector <float> &point, const int &manipulator_number) {
+
+     float x3 {};
+     float y3 {};
+     float z3 {};
     
-    if(a == 1){
-     float x3 = point.at(0);
-     float y3 = point.at(1);
-     float z3 = point.at(2);
+    if(manipulator_number == 1){
+     x3 = point.at(0);
+     y3 = point.at(1);
+     z3 = point.at(2);
     }
     
-    if(a == 2){
-     float x3 = point.at(0) - xn;
-     float y3 = point.at(1) - yn;
-     float z3 = point.at(2) - zn; 
+    if(manipulator_number == 2){
+     x3 = point.at(0) - xn;
+     y3 = point.at(1) - yn;
+     z3 = point.at(2) - zn; 
     }
     
     float theta_1 = theta_vector(0,0,x3,z3);
