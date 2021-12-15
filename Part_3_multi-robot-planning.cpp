@@ -634,72 +634,144 @@ struct state{
                 euclid_dist( vector<float>{x9,y9,z9} , vector<float>{xe3,ye3,ze3} ) );
     }
 
-/*c*/int check_line_intersection(){ // (0-state invalid)  (1-state valid)
-        vector < vector <float>> p { {0,0},{x1,y1},{x2,y2},{x3,y3} };
-        vector < vector <float>> q { {xn,yn},{x4,y4},{x5,y5},{x6,y6} };
-        
-        int count{};
-        if( (do_intersect( q.at(2), q.at(3), p.at(2), p.at(3) ) == 1) || 
-           (do_intersect( q.at(2), q.at(3), p.at(1), p.at(2) ) == 1) ||
-           (do_intersect( q.at(2), q.at(3), p.at(0), p.at(1) ) == 1) ||
-           (do_intersect( q.at(1), q.at(2), p.at(2), p.at(3) ) == 1) ||
-           (do_intersect( q.at(1), q.at(2), p.at(1), p.at(2) ) == 1) ||
-           (do_intersect( q.at(1), q.at(2), p.at(0), p.at(1) ) == 1) ||
-           (do_intersect( q.at(0), q.at(1), p.at(2), p.at(3) ) == 1) ||
-           (do_intersect( q.at(0), q.at(1), p.at(1), p.at(2) ) == 1) )
-            count++;
-        
-        if( count == 1 ){
+    int check_line_collision(){
+        vector <vector <float>> lines { {xn1,yn1,x1,y1},{x1,y1,x2,y2},{x2,y2,x3,y3},{xn2,yn2,x4,y4},{x4,y4,x5,y5},{x5,y5,x6,y6},{xn3,yn3,x7,y7},{x7,y7,x8,y8},{x8,y8,x9,y9} };
+        int count = 0;
+    
+        for(int i=3; i<lines.size(); i++ ){
+          if( check_lines( lines.at(2), lines.at(i) ) == 0 ){
             return 0;
+          }
+        }
+        
+        for(int i=3; i<lines.size(); i++ ){
+          if( check_lines( lines.at(1), lines.at(i) ) == 0 ){
+            return 0;
+          }
+        }
+        
+        for(int i=6; i<lines.size(); i++ ){
+          if( check_lines( lines.at(5), lines.at(i) ) == 0 ){
+            return 0;
+          }
+        }
+        
+        for(int i=6; i<lines.size(); i++ ){
+          if( check_lines( lines.at(4), lines.at(i) ) == 0 ){
+            return 0;
+          }
+        }
+        
+        for(int i=7; i<lines.size(); i++ ){
+          if( check_lines( lines.at(3), lines.at(i) ) == 0 ){
+            return 0;
+          }
+        }
+        
+        for(int i=4; i<lines.size(); i++ ){
+          if( check_lines( lines.at(0), lines.at(i) ) == 0 )
+            return 0;
+        }
+        
+    }
+    
+    int check_lines(vector<float> a, vector <float> b){  // 1-valid  0-invalid
+        float lambda1 = 0.5;
+        float lambda2 = 0.5;
+        float px1 = lambda1*a.at(0) + (1-lambda1)*a.at(2);
+        float py1 = lambda1*a.at(1) + (1-lambda1)*a.at(3);
+        float px2 = lambda2*b.at(0) + (1-lambda2)*b.at(1);
+        float py2 = lambda2*b.at(1) + (1-lambda2)*b.at(3);
+        
+        if( dist_xy(px1,py1,px2,py2)<=2 ){
+            for(lambda1 =0; lambda1 <= 1; lambda1+=0.2 ){
+               for(lambda2 =0; lambda2 <= 1; lambda2+=0.2 ){
+                    px1 = lambda1*a.at(0) + (1-lambda1)*a.at(2);
+                    py1 = lambda1*a.at(1) + (1-lambda1)*a.at(3);
+                    px2 = lambda2*b.at(0) + (1-lambda2)*b.at(1);
+                    py2 = lambda2*b.at(1) + (1-lambda2)*b.at(3);
+                    if(dist_xy(px1,py1,px2,py2)<=0.2){
+                        return 0;
+                    }
+               }
+            }
         }
         
         else
             return 1;
-            
-    }
-    
-    int do_intersect( const vector <float> &p1, const vector <float> &q1, const vector <float> &p2, const vector <float> &q2 ){
-        int o1 = orientation(p1, q1, p2);
-        int o2 = orientation(p1, q1, q2);
-        int o3 = orientation(p2, q2, p1);
-        int o4 = orientation(p2, q2, q1);
         
-        if (o1 != o2 && o3 != o4)
-        return true;
- 
-    // Special Cases
-    // p1, q1 and p2 are collinear and p2 lies on segment p1q1
-        if (o1 == 0 && onSegment(p1, p2, q1)) return true;
- 
-    // p1, q1 and q2 are collinear and q2 lies on segment p1q1
-        if (o2 == 0 && onSegment(p1, q2, q1)) return true;
- 
-    // p2, q2 and p1 are collinear and p1 lies on segment p2q2
-        if (o3 == 0 && onSegment(p2, p1, q2)) return true;
- 
-     // p2, q2 and q1 are collinear and q1 lies on segment p2q2
-        if (o4 == 0 && onSegment(p2, q1, q2)) return true;
- 
-    return false;
     }
     
-    int orientation( const vector <float> &p , const vector <float> &q , const vector <float> &r ){
-    float val = (q.at(1) - p.at(1)) * (r.at(0) - q.at(0) ) -
-              (q.at(0) - p.at(0) ) * (r.at(1)- q.at(1));
- 
-    if (val == 0) return 0;  // collinear
- 
-    return (val > 0)? 1: 2;
+    float dist_xy(const float &p1x, const float &p1y, const float &p2x, const float &p2y){
+        return ( sqrt((p1x-p2x)*(p1x-p2x) + (p1y-p2y)*(p1y-p2y)) );
     }
     
-    bool onSegment( const vector<float> p, const vector<float> q, const vector<float> r)
-    {
-    if (q.at(0)<= max(p.at(0), r.at(0)) && q.at(0)>= min(p.at(0), r.at(0)) &&
-        q.at(1) <= max(p.at(1), r.at(1) ) && q.at(1) >= min(p.at(1), r.at(1) ))
-       return true;
- 
-    return false;
-    }
+//    int check_line_intersection(){ // (0-state invalid)  (1-state valid)
+//        vector < vector <float>> p { {0,0},{x1,y1},{x2,y2},{x3,y3} };
+//        vector < vector <float>> q { {xn,yn},{x4,y4},{x5,y5},{x6,y6} };
+//        
+//        int count{};
+//        if( (do_intersect( q.at(2), q.at(3), p.at(2), p.at(3) ) == 1) || 
+//           (do_intersect( q.at(2), q.at(3), p.at(1), p.at(2) ) == 1) ||
+//           (do_intersect( q.at(2), q.at(3), p.at(0), p.at(1) ) == 1) ||
+//           (do_intersect( q.at(1), q.at(2), p.at(2), p.at(3) ) == 1) ||
+//           (do_intersect( q.at(1), q.at(2), p.at(1), p.at(2) ) == 1) ||
+//           (do_intersect( q.at(1), q.at(2), p.at(0), p.at(1) ) == 1) ||
+//           (do_intersect( q.at(0), q.at(1), p.at(2), p.at(3) ) == 1) ||
+//           (do_intersect( q.at(0), q.at(1), p.at(1), p.at(2) ) == 1) )
+//            count++;
+//        
+//        if( count == 1 ){
+//            return 0;
+//        }
+//        
+//        else
+//            return 1;
+//            
+//    }
+//    
+//    int do_intersect( const vector <float> &p1, const vector <float> &q1, const vector <float> &p2, const vector <float> &q2 ){
+//        int o1 = orientation(p1, q1, p2);
+//        int o2 = orientation(p1, q1, q2);
+//        int o3 = orientation(p2, q2, p1);
+//        int o4 = orientation(p2, q2, q1);
+//        
+//        if (o1 != o2 && o3 != o4)
+//        return true;
+// 
+//    // Special Cases
+//    // p1, q1 and p2 are collinear and p2 lies on segment p1q1
+//        if (o1 == 0 && onSegment(p1, p2, q1)) return true;
+// 
+//    // p1, q1 and q2 are collinear and q2 lies on segment p1q1
+//        if (o2 == 0 && onSegment(p1, q2, q1)) return true;
+// 
+//    // p2, q2 and p1 are collinear and p1 lies on segment p2q2
+//        if (o3 == 0 && onSegment(p2, p1, q2)) return true;
+// 
+//     // p2, q2 and q1 are collinear and q1 lies on segment p2q2
+//        if (o4 == 0 && onSegment(p2, q1, q2)) return true;
+// 
+//    return false;
+//    }
+//    
+//    int orientation( const vector <float> &p , const vector <float> &q , const vector <float> &r ){
+//    float val = (q.at(1) - p.at(1)) * (r.at(0) - q.at(0) ) -
+//              (q.at(0) - p.at(0) ) * (r.at(1)- q.at(1));
+// 
+//    if (val == 0) return 0;  // collinear
+// 
+//    return (val > 0)? 1: 2;
+//    }
+//    
+//    bool onSegment( const vector<float> p, const vector<float> q, const vector<float> r)
+//    {
+//    if (q.at(0)<= max(p.at(0), r.at(0)) && q.at(0)>= min(p.at(0), r.at(0)) &&
+//        q.at(1) <= max(p.at(1), r.at(1) ) && q.at(1) >= min(p.at(1), r.at(1) ))
+//       return true;
+// 
+//    return false;
+//    }
     
     
     ~state() {}
@@ -720,7 +792,7 @@ vector <state> graph {};
 
 //function definitions
 float theta_vector(float p1x, float p1y, float p2x, float p2y);  //-----> calculate angle (theta) value
-void generate_c_cpace( vector <vector <vector <int>>> &c_space , vector <vector <vector <int>>> &c_space_man2 , vector <vector <vector <int>>> &c_space_man2 );  //----------------------------------------> generates c space for the manipulator
+void generate_c_cpace( vector <vector <vector <int>>> &c_space , vector <vector <vector <int>>> &c_space_man2 , vector <vector <vector <int>>> &c_space_man3 );  //----------------------------------------> generates c space for the manipulator
 vector <float> get_plane_parameters(int p, int q, int r, int i);
 float dist_states(const state &a, const state&s);
 state getnearstate(const state &s, const vector <state> &graph);
@@ -863,7 +935,7 @@ int main(){
         rand_state.randomize_state( vector <float> {final_state.theta1,final_state.theta2,final_state.theta3}, 
                                     vector <float> {final_state.theta4,final_state.theta5,final_state.theta6},
                                     vector <float> {final_state.theta7,final_state.theta8,final_state.theta9},
-                                    vector <int> manip_goal);
+                                    manip_goal);
 //        cout<<"\nThis is the random state created: \n";
 //        rand_state.display_state();
         
@@ -904,9 +976,9 @@ int main(){
              least_distance_ever = newstate.euclid_dist_to_goal_in_cspace();
          }
          
-         if( count%10 == 0 ){
+//         if( count%10 == 0 ){
              cout<<"\n\n\n\n\n\n\n\nLeast_distance_ever is: "<<least_distance_ever<<endl<<endl<<endl;
-         }
+//         }
     }
     
     cout<<"\n\nDisplaying graph points:\n";
@@ -968,7 +1040,7 @@ float dist_states(const state &a, const state&s){
                 (a.theta3 - s.theta3)*(a.theta3 - s.theta3) +
                 (a.theta4 - s.theta4)*(a.theta4 - s.theta4) +
                 (a.theta5 - s.theta5)*(a.theta5 - s.theta5) + 
-                (a.theta6 - s.theta6)*(a.theta6 - s.theta6)
+                (a.theta6 - s.theta6)*(a.theta6 - s.theta6) +
                 (a.theta7 - s.theta7)*(a.theta7 - s.theta7) +
                 (a.theta8 - s.theta8)*(a.theta8 - s.theta8) + 
                 (a.theta9 - s.theta9)*(a.theta9 - s.theta9) );
@@ -997,8 +1069,9 @@ vector <vector <float>> generate_input (const state &near_state){  //function to
     for(int i=0; i<20; i++){
         vector <float> u{0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0};
         
-        for(int j=0; j<u.size(); j++)
+        for(int j=0; j<u.size(); j++){
             u.at(j) = rand() % static_cast<int>( theta_dot_max*1000 +1 - theta_dot_min*1000 ) + static_cast<int>(theta_dot_min*1000); u.at(j)/=1000;
+        }
 
         urand.push_back(u);
     }
@@ -1045,15 +1118,13 @@ int ifisstatevalid( state &s, const vector <vector <vector <int>>> &c_space, con
           if(check_state_collision(s, c_space, c_space_man2) == 0)
             return 0;
           else{
-              if( (s.theta1>6.1784) && (s.theta1<0.1047) && (s.theta4>3.037) && (s.theta4<3.2463) ){
-               if( s.check_line_intersection() == 0 )            //check line intersection
+              if( s.check_line_collision() == 0 )          //check line intersection
                 return 0;
                else 
-                   return 1;
+                return 1;
               }
              return 1; 
           }
-        }
     else
         return 0;
 }
@@ -1073,23 +1144,23 @@ int check_state_collision(const state &s,const vector <vector <vector <int>>> &c
     float theta9 = s.theta9 * (180/pi);
     
     int a = static_cast<int>( ( theta1 - ( fmod(theta1,2) ) ) / 2);
-    cout<<"\nAngle number a : "<<a<<endl;
+//    cout<<"\nAngle number a : "<<a<<endl;
     int b = static_cast<int>( ( theta2 - ( fmod(theta2,2) ) ) / 2);
-    cout<<"\nAngle number b : "<<b<<endl;
+//    cout<<"\nAngle number b : "<<b<<endl;
     int c = static_cast<int>( ( theta3 - ( fmod(theta3,2) ) ) / 2);
-    cout<<"\nAngle number c : "<<c<<endl;
+//    cout<<"\nAngle number c : "<<c<<endl;
     int d = static_cast<int>( ( theta4 - ( fmod(theta4,2) ) ) / 2);
-    cout<<"\nAngle number d : "<<d<<endl;
+//    cout<<"\nAngle number d : "<<d<<endl;
     int e = static_cast<int>( ( theta5 - ( fmod(theta5,2) ) ) / 2);
-    cout<<"\nAngle number e : "<<e<<endl;
+//    cout<<"\nAngle number e : "<<e<<endl;
     int f = static_cast<int>( ( theta6 - ( fmod(theta6,2) ) ) / 2);
-    cout<<"\nAngle number f : "<<f<<endl;
+//    cout<<"\nAngle number f : "<<f<<endl;
     int g = static_cast<int>( ( theta7 - ( fmod(theta7,2) ) ) / 2);
-    cout<<"\nAngle number g : "<<d<<endl;
+//    cout<<"\nAngle number g : "<<d<<endl;
     int h = static_cast<int>( ( theta8 - ( fmod(theta8,2) ) ) / 2);
-    cout<<"\nAngle number h : "<<e<<endl;
+//    cout<<"\nAngle number h : "<<e<<endl;
     int i1 = static_cast<int>( ( theta9 - ( fmod(theta9,2) ) ) / 2);
-    cout<<"\nAngle number i1 : "<<f<<endl;
+//    cout<<"\nAngle number i1 : "<<f<<endl;
     
     vector <int> thetas1 { (a) , (a-1) , (a+1) , (a+2) };
     vector <int> thetas2 { (b) , (b-1) , (b+1) , (b+2) };
