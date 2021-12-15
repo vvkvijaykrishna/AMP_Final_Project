@@ -635,7 +635,7 @@ struct state{
     }
 
     int check_line_collision(){
-        vector <vector <float>> lines { {xn1,yn1,x1,y1},{x1,y1,x2,y2},{x2,y2,x3,y3},{xn2,yn2,x4,y4},{x4,y4,x5,y5},{x5,y5,x6,y6},{xn3,yn3,x7,y7},{x7,y7,x8,y8},{x8,y8,x9,y9} };
+        vector <vector <float>> lines { {xn1,yn1,zn1,x1,y1,z1},{x1,y1,z1,x2,y2,z2},{x2,y2,z2,x3,y3,z3},{xn2,yn2,xn2,x4,y4,z4},{x4,y4,z4,x5,y5,z5},{x5,y5,z5,x6,y6,z6},{xn3,yn3,zn3,x7,y7,z7},{x7,y7,z7,x8,y8,z8},{x8,y8,z8,x9,y9,z9} };
         int count = 0;
     
         for(int i=3; i<lines.size(); i++ ){
@@ -678,32 +678,40 @@ struct state{
     int check_lines(vector<float> a, vector <float> b){  // 1-valid  0-invalid
         float lambda1 = 0.5;
         float lambda2 = 0.5;
-        float px1 = lambda1*a.at(0) + (1-lambda1)*a.at(2);
-        float py1 = lambda1*a.at(1) + (1-lambda1)*a.at(3);
-        float px2 = lambda2*b.at(0) + (1-lambda2)*b.at(1);
-        float py2 = lambda2*b.at(1) + (1-lambda2)*b.at(3);
+        // a-> x1,y1,z1,x2,y2,z2  b->x3,y3,z3,x4,y4,z4
         
-        if( dist_xy(px1,py1,px2,py2)<=2 ){
+        float px1 = lambda1*a.at(0) + (1-lambda1)*a.at(3);
+        float py1 = lambda1*a.at(1) + (1-lambda1)*a.at(4);
+        float pz1 = lambda1*a.at(2) + (1-lambda1)*a.at(5);
+        float px2 = lambda2*b.at(0) + (1-lambda2)*b.at(3);
+        float py2 = lambda2*b.at(1) + (1-lambda2)*b.at(4);
+        float pz2 = lambda2*b.at(2) + (1-lambda2)*b.at(5);
+   //     cout<<"\nP1x: "<<px1<<"\tpy1: "<<py1<<"\tpz1: "<<pz1<<"\tpx2: "<<px2<<"\tpy2: "<<py2<<"\tpz2: "<<pz2<<endl;
+        if( dist_xyz(px1,py1,pz1,px2,py2,pz2)<=2 ){
             for(lambda1 =0; lambda1 <= 1; lambda1+=0.2 ){
                for(lambda2 =0; lambda2 <= 1; lambda2+=0.2 ){
-                    px1 = lambda1*a.at(0) + (1-lambda1)*a.at(2);
-                    py1 = lambda1*a.at(1) + (1-lambda1)*a.at(3);
-                    px2 = lambda2*b.at(0) + (1-lambda2)*b.at(1);
-                    py2 = lambda2*b.at(1) + (1-lambda2)*b.at(3);
-                    if(dist_xy(px1,py1,px2,py2)<=0.2){
-                        return 0;
+                    px1 = lambda1*a.at(0) + (1-lambda1)*a.at(3);
+                    py1 = lambda1*a.at(1) + (1-lambda1)*a.at(4);
+                    pz1 = lambda1*a.at(2) + (1-lambda1)*a.at(5);
+                    px2 = lambda2*b.at(0) + (1-lambda2)*b.at(3);
+                    py2 = lambda2*b.at(1) + (1-lambda2)*b.at(4);
+                    pz2 = lambda2*b.at(2) + (1-lambda2)*b.at(5);
+                    if( dist_xyz(px1,py1,pz1,px2,py2,pz2) <=0.4){
+                        {//cout<<"\nState invalid from check_lines function\n";
+                        return 0;}
                     }
                }
             }
         }
         
         else
-            return 1;
+            {//cout<<"\nState valid from checkline function\n";
+            return 1;}
         
     }
     
-    float dist_xy(const float &p1x, const float &p1y, const float &p2x, const float &p2y){
-        return ( sqrt((p1x-p2x)*(p1x-p2x) + (p1y-p2y)*(p1y-p2y)) );
+    float dist_xyz(const float &p1x, const float &p1y, const float &p1z, const float &p2x, const float &p2y, const float &p2z){
+        return ( sqrt((p1x-p2x)*(p1x-p2x) + (p1y-p2y)*(p1y-p2y) + (p1z-p2z)*(p1z-p2z)) );
     }
     
 //    int check_line_intersection(){ // (0-state invalid)  (1-state valid)
@@ -958,14 +966,16 @@ int main(){
             temp_state.previous_state = near_state.state_number;
 //          temp_state.time = near_state.time + 1; //--------------------->> actuator duration
             graph.push_back(temp_state);
-            cout<<"\nYes, the state is valid\n";
+//            cout<<"\nYes, the state is valid- here we go\n";
             point_number++;
         }
         
         else
-         {cout<<"\nThe state is invalid\n";continue;}
+         {cout<<"\nNo of iterations over: "<<count<<endl;
+          cout<<"\nThe state is invalid---no no no no\n";
+          continue;}
          count++;
-         cout<<"\nNo of iterations over: "<<count<<endl;
+//         cout<<"\nNo of iterations over: "<<count<<endl;
          
          if( newstate.isstate_goal()==1 ){
              cout<<"\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n**********GOAL REACHED\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n**********";
@@ -976,9 +986,21 @@ int main(){
              least_distance_ever = newstate.euclid_dist_to_goal_in_cspace();
          }
          
-//         if( count%10 == 0 ){
-             cout<<"\n\n\n\n\n\n\n\nLeast_distance_ever is: "<<least_distance_ever<<endl<<endl<<endl;
-//         }
+         if( count%10 == 0 ){
+             cout<<"\n\n\n\n\n\n\n\nLeast_distance_ever is: "<<least_distance_ever<<"\tat iteration: "<<count<<endl<<endl<<endl;
+             
+            if( manip_goal.at(0)==1 ){
+                cout<<"\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n**********The 1st manipulator has reached the goal!!\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n**********";
+             }
+            
+            if( manip_goal.at(1)==1 ){
+                cout<<"\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n**********The 2nd manipulator has reached the goal!!\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n**********";
+            }
+            
+            if( manip_goal.at(2)==1 ){
+                cout<<"\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n**********The 3rd manipulator has reached the goal!!\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n**********";
+            }
+         }
     }
     
     cout<<"\n\nDisplaying graph points:\n";
@@ -1114,12 +1136,12 @@ int ifisstatevalid( state &s, const vector <vector <vector <int>>> &c_space, con
         (s.theta7>=0) && (s.theta7<=(2*pi)) &&
         (s.theta8>=0) && (s.theta8<=(2*pi)) &&
         (s.theta9>=0) && (s.theta9<=(2*pi)) ){ //--------------->> can implement path validity as well
-          cout<<"\nThe thetas are in the range!!"<<s.theta1<<" "<<s.theta2<<" "<<s.theta3<<" "<<s.theta4<<" "<<s.theta5<<" "<<s.theta6<<" "<<s.theta7<<" "<<s.theta8<<" "<<s.theta9<<"\n";
+//          cout<<"\nThe thetas are in the range!!"<<s.theta1<<" "<<s.theta2<<" "<<s.theta3<<" "<<s.theta4<<" "<<s.theta5<<" "<<s.theta6<<" "<<s.theta7<<" "<<s.theta8<<" "<<s.theta9<<"\n";
           if(check_state_collision(s, c_space, c_space_man2) == 0)
             return 0;
           else{
               if( s.check_line_collision() == 0 )          //check line intersection
-                return 0;
+                {cout<<"\nInvalid in check_line_collision function\n";return 0;}
                else 
                 return 1;
               }
@@ -1131,7 +1153,7 @@ int ifisstatevalid( state &s, const vector <vector <vector <int>>> &c_space, con
   //static_cast
 int check_state_collision(const state &s,const vector <vector <vector <int>>> &c_space, const vector <vector <vector <int>>> &c_space_man2){  //----------------------->> has a safety of 2 points from the c space
 
-    cout<<"\nIn check_state_collision function...\n";
+//    cout<<"\nIn check_state_collision function...\n";
     
     float theta1 = s.theta1 * (180/pi);
     float theta2 = s.theta2 * (180/pi);
@@ -1248,7 +1270,7 @@ int check_state_collision(const state &s,const vector <vector <vector <int>>> &c
     if( count != 0 )//state not valid
         {cout<<"\nThe state is not valid!"<<endl;return 0;}
     else{
-        cout<<"\nYes, state is valid!!!\n";
+//        cout<<"\nYes, state is valid!!!\n";
         return 1;
     }
     
